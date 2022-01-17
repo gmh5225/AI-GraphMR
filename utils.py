@@ -254,7 +254,7 @@ def decompose(number, is_decimal):
 
 def repl(num):
     num = num.group(0)
-    # num为整数 0 <= num <= 9
+    # num is integer 0 <= num <= 9
     if len(num) == 1: return num
 
     if '.' not in num:
@@ -265,14 +265,12 @@ def repl(num):
             return '(' + decompose(decimal, True) + ')'
         else:
             return '(' + decompose(integer, False) + '+' + decompose(decimal, True) + ')'
-# 匹配数字
 def num_decompose(expr):
     return re.sub(r'\d+\.?\d*', repl, expr)
 
 
 def expr_extract(dataset, qst):
     if dataset not in DEEPMIND_PATTERN_DICT:
-        # MBA and POLY don't need numeral decomposition
         return qst
     search_obj = re.search(DEEPMIND_PATTERN_DICT[dataset], qst)
 
@@ -388,7 +386,6 @@ class GraphExprDataset(InMemoryDataset):
             expr = expr_extract(self.dataset, raw_qst)
             
             for c in expr:
-                # qst_vocab因为会转换成树，不需要括号
                 if c != '(' and c != ')' and c not in self.qst_vocab:
                     self.qst_vocab[c] = len(self.qst_vocab)
             for c in raw_ans:
@@ -415,16 +412,13 @@ class GraphExprDataset(InMemoryDataset):
 
         # Pad the target
         for data in data_list:
-            # 以<pad>填充y, 由于<pad>恒为0，故而可以使用zeros
             padding = torch.zeros(max_tgt_len - data.y.shape[0], dtype=torch.long)
             # padding = torch.tensor([self.ans_vocab['<pad>']] * (max_tgt_len - data.y.shape[0]), dtype=torch.long)
             data.y = torch.cat((data.y, padding), dim=0)
-            # 填充x
             padding = torch.zeros((data.x.shape[0], len(self.qst_vocab)-data.x.shape[1]), dtype=torch.float)
             data.x = torch.cat((data.x, padding), dim=1)
 
         self.max_tgt_len = max_tgt_len
-        # exit(0)
         data, slices = self.collate(data_list)
         torch.save((data, slices), self.processed_paths[0])
 
@@ -442,8 +436,6 @@ class GraphExprDataset(InMemoryDataset):
             if tag == 'UAdd':
                 exit(expr)
 
-            # MBA和POLY数据集中的数字范围为[0-9]，因此特征可以表示为one-hot向量
-            # 而deepmind数据集中数字没有限制，理论上有无穷多数，表示成one-hot会产生超大矩阵，不利于计算。
             feature = [0] * len(self.qst_vocab)
             feature[self.qst_vocab[tag]] = 1
             
@@ -458,23 +450,3 @@ class GraphExprDataset(InMemoryDataset):
         edge_index = torch.tensor(COO_edge_idx, dtype=torch.long)
 
         return x, edge_index
-
-
-# for dataset in ['poly1', 'poly6', 'mba_simplify']:
-#     num_nodes, num_edges = [], []
-#     ds = pd.read_csv(f'dataset/raw/{dataset}.csv', header=None, nrows=None)
-#     for idx, row in tqdm(ds.iterrows()):
-#         raw_qst, raw_ans = row[0], row[1]
-#         qst = expr_extract(dataset, raw_qst)
-#         q_a_pair.append([qst, raw_ans])
-
-#     df = pd.DataFrame(q_a_pair)
-#     df.to_csv(f'deepmind.csv', header=False, index=False, mode='a+')
-
-# print(dataset.feature_dict)
-# expr = '(1*10**2+2*10+3) + (4*10**2+3*10+2)'
-# expr = '4/g-20'
-# nodes, edges = expr2graph(expr, is_dag=True)
-# print(len(nodes))
-# print(len(edges))
-# dot_expr(nodes, edges)
